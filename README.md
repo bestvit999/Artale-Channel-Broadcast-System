@@ -97,3 +97,8 @@ python main_chat_ws.py
 ## 📜 授權 License
 
 MIT License
+
+---
+
+## 打包
+pyinstaller --name "ArtaleChat" --onefile --windowed --add-data "templates;templates" --add-data "static;static" control_panel.py

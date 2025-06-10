@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artale 聊天室 Sniffer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- 主體結構 -->
+    <main class="main-chat-area" id="left-panel">
+        <header class="chat-header">
+            <h1>🎮 Artale 聊天室</h1>
+            <div class="status"><span>監聽狀態:</span><span id="status-light" class="offline"></span></div>
+        </header>
+        <div class="messages-container" id="main-chat-messages"></div>
+    </main>
+    <div class="resizer" id="drag-handle"></div>
+    <aside class="sidebar" id="right-panel">
+        <div class="sidebar-controls">
+            <button id="add-keyword-room-btn">新增關鍵字聊天室</button>
+        </div>
+        <div id="keyword-rooms-container"></div>
+    </aside>
+
+    <!-- 關鍵字聊天室的模板 (重點修改處) -->
+    <template id="keyword-room-template">
+        <div class="keyword-room">
+            <header class="chat-header">
+                <div class="header-top">
+                    <h3>關鍵字聊天室</h3>
+                    <div class="button-group">
+                        <button class="clear-room-btn" title="清除此聊天室紀錄">清除</button>
+                        <button class="delete-room-btn" title="刪除此聊天室">刪除</button>
+                    </div>
+                </div>
+                <input type="text" class="keyword-input" placeholder="輸入關鍵字, 用空格或逗號分隔">
+            </header>
+            <div class="messages-container"></div>
+        </div>
+    </template>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 元素選擇 (不變) ---
+        const statusLight = document.getElementById('status-light');
+        const mainChatMessages = document.getElementById('main-chat-messages');
+        const keywordRoomsContainer = document.getElementById('keyword-rooms-container');
+        const addKeywordRoomBtn = document.getElementById('add-keyword-room-btn');
+        const keywordRoomTemplate = document.getElementById('keyword-room-template');
+        const dragHandle = document.getElementById('drag-handle');
+        const leftPanel = document.getElementById('left-panel');
+        
+        // --- 拖曳功能邏輯 (不變) ---
+        let isResizing = false;
+        dragHandle.addEventListener('mousedown', (e) => { e.preventDefault(); isResizing = true; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); });
+        function onMouseMove(e) { if (!isResizing) return; const containerRect = document.body.getBoundingClientRect(); let newLeftWidth = e.clientX - containerRect.left; const leftMinWidth = 300; const rightMinWidth = 250; if (newLeftWidth < leftMinWidth) newLeftWidth = leftMinWidth; if (containerRect.width - newLeftWidth < rightMinWidth) newLeftWidth = containerRect.width - rightMinWidth; leftPanel.style.flexBasis = newLeftWidth + 'px'; }
+        function onMouseUp() { isResizing = false; document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); }
+        leftPanel.style.flexBasis = '70%';
+
+        // --- SSE & 訊息顯示 (不變) ---
+        const eventSource = new EventSource('/stream');
+        eventSource.onopen = () => { statusLight.classList.add('online'); statusLight.classList.remove('offline'); };
+        eventSource.onerror = () => { statusLight.classList.add('offline'); statusLight.classList.remove('online'); };
+        eventSource.onmessage = (event) => addMessageToDOM(JSON.parse(event.data));
+        function addMessageToDOM(data) { const { room, ts, message } = data; const container = document.createElement('div'); container.className = 'message'; const copyBtn = document.createElement('button'); copyBtn.className = 'copy-btn'; copyBtn.textContent = '📋'; const copyText = `${message.Nickname || ''}#${message.ProfileCode || ''}`; copyBtn.dataset.copyText = copyText; copyBtn.title = `點擊複製: ${copyText}`; container.appendChild(copyBtn); const nicknameEl = document.createElement('span'); nicknameEl.className = 'nickname'; nicknameEl.textContent = message.Nickname || ''; container.appendChild(nicknameEl); if (message.Channel) { const channelEl = document.createElement('span'); channelEl.className = 'channel'; channelEl.textContent = `${message.Channel}:`; container.appendChild(channelEl); } const textEl = document.createElement('span'); textEl.className = 'message-text'; textEl.textContent = message.Text || ''; container.appendChild(textEl); const timestampEl = document.createElement('span'); timestampEl.className = 'timestamp'; timestampEl.textContent = `(${ts})`; container.appendChild(timestampEl); let targetContainer = (room === 'main') ? mainChatMessages : document.getElementById(room)?.querySelector('.messages-container'); if (targetContainer) { const isScrolledToBottom = targetContainer.scrollHeight - targetContainer.clientHeight <= targetContainer.scrollTop + 5; targetContainer.appendChild(container); if (isScrolledToBottom) targetContainer.scrollTop = targetContainer.scrollHeight; } }
+        
+        // --- 事件委派 (重點修改處) ---
+        document.body.addEventListener('click', async (event) => {
+            const copyBtn = event.target.closest('.copy-btn');
+            const clearBtn = event.target.closest('.clear-room-btn');
+            const deleteBtn = event.target.closest('.delete-room-btn'); // 偵測刪除按鈕
+
+            if (copyBtn) {
+                navigator.clipboard.writeText(copyBtn.dataset.copyText).then(() => {
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✔';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => { copyBtn.textContent = originalText; copyBtn.classList.remove('copied'); }, 1500);
+                });
+                return;
+            }
+
+            if (clearBtn) {
+                const roomElement = clearBtn.closest('.keyword-room');
+                if (roomElement) roomElement.querySelector('.messages-container').innerHTML = '';
+                return;
+            }
+
+            if (deleteBtn) {
+                const roomElement = deleteBtn.closest('.keyword-room');
+                if (roomElement) {
+                    const roomId = roomElement.id;
+                    // 可選：增加一個確認對話框
+                    if (confirm(`確定要刪除這個關鍵字聊天室嗎？`)) {
+                        try {
+                            const response = await fetch('/delete_keyword_room', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ roomId })
+                            });
+                            const result = await response.json();
+                            if (result.success) {
+                                // 從畫面上移除元素
+                                roomElement.remove(); 
+                            } else {
+                                alert(`刪除失敗: ${result.error}`);
+                            }
+                        } catch (error) {
+                            console.error("Failed to delete room:", error);
+                            alert("刪除聊天室時發生網路錯誤。");
+                        }
+                    }
+                }
+            }
+        });
+        
+        // --- 關鍵字聊天室 & 其他邏輯 (不變) ---
+        addKeywordRoomBtn.addEventListener('click', async () => { try { const response = await fetch('/add_keyword_room', { method: 'POST' }); const result = await response.json(); if (result.success) { createKeywordRoomElement(result.roomId); } } catch (error) { console.error("Failed to add keyword room:", error); } });
+        function createKeywordRoomElement(roomId) { const templateContent = keywordRoomTemplate.content.cloneNode(true); const newRoom = templateContent.querySelector('.keyword-room'); newRoom.id = roomId; const keywordInput = newRoom.querySelector('.keyword-input'); let debounceTimer; keywordInput.addEventListener('input', (e) => { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { updateKeywords(roomId, e.target.value); }, 500); }); keywordRoomsContainer.appendChild(newRoom); }
+        async function updateKeywords(roomId, keywords) { try { await fetch('/update_keywords', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roomId, keywords }) }); } catch (error) { console.error("Failed to update keywords:", error); } }
+    });
+    </script>
+</body>
+</html>

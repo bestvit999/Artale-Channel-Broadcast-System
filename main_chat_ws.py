@@ -136,8 +136,11 @@ def handle_packet(pkt):
             print(f"❌ 解析失敗：{e}")
         idx = payload.find(b"TOZ ", idx + 1)
 
-# ======== 主程式 ========
-if __name__ == "__main__":
+
+def start_websocket_server():
     print(f">> 🟢 啟動 Sniffer 中（{BPF_FILTER}） ✅ 已啟動 MapleStory 聊天 WebSocket 推播器")
     threading.Thread(target=lambda: AsyncSniffer(filter=BPF_FILTER, prn=handle_packet, store=False).start(), daemon=True).start()
     asyncio.run(websocket_server())
+
+if __name__ == '__main__':
+    start_websocket_server()

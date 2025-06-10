@@ -1,0 +1,273 @@
+/* --- 基本設定 & 版面配置 --- */
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", "PingFang TC", "Helvetica Neue", Arial, sans-serif;
+    background-color: #28243D; /* 深紫色背景 */
+    color: #E0E0E0; /* 柔和的白色文字 */
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.main-chat-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #3C3854; /* 聊天區塊背景色 */
+    border-right: 2px solid #28243D;
+    border-radius: 8px;
+    margin: 10px;
+    overflow: hidden; /* 為了圓角效果 */
+}
+
+.sidebar {
+    flex-basis: 400px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 10px 10px 0;
+}
+
+/* --- 標頭 --- */
+.chat-header {
+    padding: 15px 20px;
+    background-color: rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+}
+
+.main-chat-area .chat-header {
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+h1, h2, h3 {
+    margin: 0;
+    font-weight: 500;
+    color: #FFFFFF;
+}
+
+h1 {
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.status {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+#status-light {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: background-color 0.3s;
+}
+#status-light.offline { background-color: #f44336; }
+#status-light.online { background-color: #4caf50; }
+
+/* --- 訊息容器 & 捲軸樣式 --- */
+.messages-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.messages-container::-webkit-scrollbar { width: 8px; }
+.messages-container::-webkit-scrollbar-track { background: transparent; }
+.messages-container::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+.messages-container::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 0, 0, 0.6); }
+
+
+/* --- 單一訊息樣式 --- */
+.message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    word-break: break-word;
+}
+.message:hover { background-color: rgba(0, 0, 0, 0.15); }
+
+.copy-btn {
+    background: #5A5278;
+    border: none;
+    color: #C0BBDD;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+.copy-btn:hover { opacity: 1; background: #6A628A; }
+.copy-btn.copied { background-color: #4CAF50; color: white; }
+
+.nickname { font-weight: bold; color: #F1C40F; flex-shrink: 0; }
+.channel { color: #87CEEB; margin-left: 8px; flex-shrink: 0; }
+.message-text { flex-grow: 1; text-align: left; white-space: pre-wrap; }
+.timestamp { color: #999999; font-size: 0.8em; flex-shrink: 0; }
+
+/* --- 側邊欄 --- */
+.sidebar-controls {
+    padding: 15px;
+    background-color: #3C3854;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+#add-keyword-room-btn, #upload-form label {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    background-color: #5865F2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    text-align: center;
+    transition: background-color 0.2s;
+}
+#add-keyword-room-btn:hover, #upload-form label:hover { background-color: #4752C4; }
+#add-keyword-room-btn { margin-bottom: 15px; }
+#file-upload { display: none; }
+
+#keyword-rooms-container { overflow-y: auto; }
+#keyword-rooms-container::-webkit-scrollbar { width: 8px; }
+#keyword-rooms-container::-webkit-scrollbar-track { background: transparent; }
+#keyword-rooms-container::-webkit-scrollbar-thumb { background-color: rgba(60, 56, 84, 0.5); border-radius: 10px; }
+
+/* --- 關鍵字聊天室 (重點修改處) --- */
+.keyword-room {
+    background-color: #3C3854;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    max-height: 400px;
+    overflow: hidden;
+}
+.keyword-room .chat-header {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 10px 15px;
+}
+/* 新增：讓標題和清除按鈕並排 */
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.header-top h3 { font-size: 1.1em; }
+
+/* 新增：清除按鈕的樣式 */
+.clear-room-btn {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.clear-room-btn:hover {
+    background-color: #dc3545; /* 滑鼠懸停時變紅色，表示危險操作 */
+}
+
+.keyword-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    background-color: #28243D;
+    border: 1px solid #5A5278;
+    color: #f0f0f0;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+.keyword-input:focus { outline: none; border-color: #5865F2; }
+
+/* --- 追加的樣式，用於實現拖曳功能 --- */
+
+/* 讓 body 成為 Flex 容器，並防止拖曳時選取文字 */
+body {
+    display: flex;
+    user-select: none;
+}
+
+/* 移除 .container，因為 body 現在是主容器 */
+/* .container { ... } 這段可以保留或刪除，因為 body 已經取代了它的作用 */
+
+/* 讓左側面板寬度可變，並設定最小寬度 */
+.main-chat-area {
+    flex-shrink: 0; /* 防止面板在空間不足時被壓縮 */
+    min-width: 300px;
+}
+
+/* 讓右側面板自動填滿剩餘空間，並設定最小寬度 */
+.sidebar {
+    flex-grow: 1;
+    min-width: 250px;
+    /* 移除固定的 flex-basis */
+    flex-basis: auto; 
+}
+
+/* 拖曳桿的樣式 */
+.resizer {
+    flex-basis: 6px;
+    flex-shrink: 0;
+    background-color: #28243D; /* 與背景色相同，使其融入 */
+    cursor: col-resize;
+    transition: background-color 0.2s;
+}
+.resizer:hover {
+    background-color: #5865F2; /* 懸停時高亮 */
+}
+
+
+/* --- 追加的樣式，用於刪除按鈕 --- */
+
+/* 讓標題右側的按鈕群組起來 */
+.header-top .button-group {
+    display: flex;
+    gap: 8px; /* 按鈕之間的間距 */
+}
+
+/* 刪除按鈕的樣式 */
+.delete-room-btn {
+    background-color: #dc3545; /* 紅色，表示刪除操作 */
+    color: white;
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.delete-room-btn:hover {
+    background-color: #a71d2a; /* 深紅色 */
+}
