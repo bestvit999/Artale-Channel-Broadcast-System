@@ -289,11 +289,11 @@ def upload_file():
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 
-def start_flask_app():
+def start_flask_app(port=5000):
     if LIVE_CAPTURE:
         sniffer_thread = SnifferThread()
         sniffer_thread.start()
-    app.run(host='0.0.0.0', port=5000, threaded=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, threaded=True, use_reloader=False)
 
 if __name__ == '__main__':
     start_flask_app()

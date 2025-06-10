@@ -5,6 +5,7 @@ import time
 import webbrowser
 import sys
 import os
+import socket
 
 # --- 導入您原有的應用邏輯 ---
 # 假設您的 Flask 應用和 WebSocket 服務可以像這樣導入並啟動
@@ -13,15 +14,24 @@ from app import start_flask_app  # 假設 app.py 有一個 run_flask_app() 函�
 from main_chat_ws import start_websocket_server # 假設 ws 腳本有這個函數
 
 # --- 定義行程任務 ---
-def run_flask_process():
+def run_flask_process(port):
     """運行 Flask 應用的行程目標函數"""
     print("Flask 伺服器啟動中...")
-    start_flask_app()
+    start_flask_app(port)
 
 def run_ws_process():
     """運行 WebSocket 服務的行程目標函數"""
     print("WebSocket 伺服器啟動中...")
     start_websocket_server()
+
+def find_free_port(start_port=5000, max_port=5100):
+    for port in range(start_port, max_port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            # 嘗試連接該 port，連不上代表可用
+            result = sock.connect_ex(('127.0.0.1', port))
+            if result != 0:
+                return port
+    raise RuntimeError("找不到可用的 port")
 
 # --- Tkinter 控制面板應用 ---
 class ControlPanel(tk.Tk):
@@ -60,8 +70,9 @@ class ControlPanel(tk.Tk):
 
         print("正在啟動服務...")
         try:
+            port = find_free_port(5000,5100)
             # 建立並啟動子行程
-            flask_p = multiprocessing.Process(target=run_flask_process, daemon=True)
+            flask_p = multiprocessing.Process(target=run_flask_process, args=(port,), daemon=True)
             ws_p = multiprocessing.Process(target=run_ws_process, daemon=True)
             
             self.processes = [flask_p, ws_p]
@@ -70,6 +81,7 @@ class ControlPanel(tk.Tk):
                 p.start()
             
             self.service_running = True
+            self.flask_port = port  # 紀錄 port，給瀏覽器打開用
             self.update_ui_state()
 
             # 等待一小段時間後自動打開瀏覽器
@@ -106,7 +118,11 @@ class ControlPanel(tk.Tk):
             self.stop_button.config(state=tk.DISABLED)
 
     def open_browser(self):
-        webbrowser.open("http://127.0.0.1:5000")
+        if hasattr(self, "flask_port"):
+            url = f"http://127.0.0.1:{self.flask_port}"
+        else:
+            url = "http://127.0.0.1:5000"
+        webbrowser.open(url)
 
     def on_closing(self):
         if self.service_running:
