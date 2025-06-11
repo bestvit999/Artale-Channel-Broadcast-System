@@ -196,31 +196,38 @@ def index():
 def stream():
     """使用 Server-Sent Events (SSE) 推送新訊息"""
     def event_stream():
-        # 紀錄每個聊天室已發送的訊息數量，避免重複發送
         sent_counts = {"main": 0}
-        
+
         while True:
             with data_lock:
-                # 檢查主聊天室的新訊息
-                if len(main_chat_messages) > sent_counts["main"]:
+                # 主聊天室同步修正：如果 sent_counts 超過 deque 範圍，重設它
+                main_len = len(main_chat_messages)
+                if sent_counts["main"] > main_len:
+                    sent_counts["main"] = max(0, main_len - MAX_MESSAGES)
+
+                if main_len > sent_counts["main"]:
                     new_messages = list(main_chat_messages)[sent_counts["main"]:]
                     for ts, parsed in new_messages:
                         data = {"room": "main", "ts": ts, "message": parsed}
                         yield f"data: {json.dumps(data)}\n\n"
-                    sent_counts["main"] = len(main_chat_messages)
+                    sent_counts["main"] = main_len
 
-                # 檢查關鍵字聊天室的新訊息
+                # 關鍵字聊天室同步修正
                 for room_id, room_data in keyword_rooms.items():
                     if room_id not in sent_counts:
                         sent_counts[room_id] = 0
-                    if len(room_data["messages"]) > sent_counts[room_id]:
+                    room_len = len(room_data["messages"])
+                    if sent_counts[room_id] > room_len:
+                        sent_counts[room_id] = max(0, room_len - MAX_MESSAGES)
+
+                    if room_len > sent_counts[room_id]:
                         new_messages = list(room_data["messages"])[sent_counts[room_id]:]
                         for ts, parsed in new_messages:
                             data = {"room": room_id, "ts": ts, "message": parsed}
                             yield f"data: {json.dumps(data)}\n\n"
-                        sent_counts[room_id] = len(room_data["messages"])
+                        sent_counts[room_id] = room_len
 
-            time.sleep(0.5) # 每 0.5 秒檢查一次
+            time.sleep(0.5)
 
     return Response(event_stream(), mimetype='text/event-stream')
 
